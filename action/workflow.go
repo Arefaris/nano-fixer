@@ -7,12 +7,20 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/gen2brain/beeep"
-	"personal-grammarly/ai"
-	"personal-grammarly/keyboard"
+	"nano-fixer/ai"
+	"nano-fixer/config"
+	"nano-fixer/keyboard"
 )
 
-func RunCorrection(aiClient *ai.Client) {
-	log.Println("Correction triggered")
+func RunCorrection(aiClient *ai.Client, getConfig func() *config.Config) {
+	cfg := getConfig()
+	if cfg.APIKey == "" {
+		log.Println("Correction triggered but API Key is empty. Aborting.")
+		notify("Nano Fixer", "Please configure your API Key in Settings.")
+		return
+	}
+
+	log.Println("Correction triggered. Language:", cfg.TargetLanguage)
 
 	// 1. Save current clipboard
 	originalClipboard, err := clipboard.ReadAll()
@@ -24,7 +32,7 @@ func RunCorrection(aiClient *ai.Client) {
 	// 2. Clear clipboard so we know when new text is ready
 	clipboard.WriteAll("")
 
-	// 3. Simulate Ctrl+C
+	// 3. Simulate Ctrl+C (with modifier release)
 	err = keyboard.SimulateCopy()
 	if err != nil {
 		log.Println("Error simulating copy:", err)
@@ -49,14 +57,14 @@ func RunCorrection(aiClient *ai.Client) {
 		return
 	}
 
-	log.Println("Selected text:", selectedText)
+	log.Printf("Selected text length: %d characters\n", len(selectedText))
 	notify("Processing", "Correcting grammar...")
 
 	// 6. Call AI API
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	correctedText, err := aiClient.CorrectText(ctx, selectedText)
+	correctedText, err := aiClient.CorrectText(ctx, selectedText, cfg.TargetLanguage)
 	if err != nil {
 		log.Println("AI API Error:", err)
 		notify("Error", "Failed to correct text.")
@@ -64,7 +72,7 @@ func RunCorrection(aiClient *ai.Client) {
 		return
 	}
 
-	log.Println("Corrected text:", correctedText)
+	log.Printf("Corrected text length: %d characters\n", len(correctedText))
 
 	// 7. Write corrected text to clipboard
 	err = clipboard.WriteAll(correctedText)
@@ -74,7 +82,7 @@ func RunCorrection(aiClient *ai.Client) {
 		return
 	}
 
-	// 8. Simulate Ctrl+V to replace text
+	// 8. Simulate Ctrl+V to replace text (with modifier release)
 	err = keyboard.SimulatePaste()
 	if err != nil {
 		log.Println("Error simulating paste:", err)
@@ -95,12 +103,13 @@ func restoreClipboard(text string) {
 			log.Println("Warning: failed to restore clipboard:", err)
 		}
 	} else {
-		// Just clear it
 		clipboard.WriteAll("")
 	}
 }
 
 func notify(title, message string) {
+	// Using the app icon in notifications is supported by beeep on some platforms,
+	// but we can just use the standard toast notification.
 	err := beeep.Notify(title, message, "")
 	if err != nil {
 		log.Println("Notification error:", err)

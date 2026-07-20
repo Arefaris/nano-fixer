@@ -1,1 +1,7 @@
+app.log
+config.json
+*.exe
+rsrc.syso
+app.manifest
 .env
+.env.example

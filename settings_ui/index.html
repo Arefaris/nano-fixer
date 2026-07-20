@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Fixer - Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-effects">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+    
+    <div class="container">
+        <div class="glass-card">
+            <header>
+                <div class="logo-area">
+                    <div class="logo-glow"></div>
+                    <span class="logo-text">NANO FIXER</span>
+                </div>
+                <p class="subtitle">Personal AI Grammar & Style Corrector</p>
+            </header>
+
+            <form id="settings-form">
+                <section class="form-section">
+                    <h3><span class="section-num">01</span> API Configuration</h3>
+                    
+                    <div class="input-group">
+                        <label for="api-key">API Key</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="api-key" placeholder="sk-proj-..." autocomplete="off">
+                            <button type="button" id="toggle-key" class="icon-btn">
+                                <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="api-base">API Base URL <span class="label-optional">(Optional)</span></label>
+                        <input type="url" id="api-base" placeholder="https://api.openai.com/v1">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="model-name">Model Name</label>
+                        <input type="text" id="model-name" placeholder="gpt-4o-mini" required>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h3><span class="section-num">02</span> Hotkeys & Language</h3>
+                    
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Hotkey Modifiers</label>
+                            <div class="modifiers-list">
+                                <label class="checkbox-wrapper">
+                                    <input type="checkbox" id="mod-ctrl">
+                                    <span class="checkbox-custom"></span>
+                                    Ctrl
+                                </label>
+                                <label class="checkbox-wrapper">
+                                    <input type="checkbox" id="mod-alt">
+                                    <span class="checkbox-custom"></span>
+                                    Alt
+                                </label>
+                                <label class="checkbox-wrapper">
+                                    <input type="checkbox" id="mod-shift">
+                                    <span class="checkbox-custom"></span>
+                                    Shift
+                                </label>
+                                <label class="checkbox-wrapper">
+                                    <input type="checkbox" id="mod-win">
+                                    <span class="checkbox-custom"></span>
+                                    Win
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="hotkey-key">Hotkey Trigger Key</label>
+                            <select id="hotkey-key" required>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="G">G</option>
+                                <option value="H">H</option>
+                                <option value="I">I</option>
+                                <option value="J">J</option>
+                                <option value="K">K</option>
+                                <option value="L">L</option>
+                                <option value="M">M</option>
+                                <option value="N">N</option>
+                                <option value="O">O</option>
+                                <option value="P">P</option>
+                                <option value="Q">Q</option>
+                                <option value="R">R</option>
+                                <option value="S">S</option>
+                                <option value="T">T</option>
+                                <option value="U">U</option>
+                                <option value="V">V</option>
+                                <option value="W">W</option>
+                                <option value="X">X</option>
+                                <option value="Y">Y</option>
+                                <option value="Z">Z</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="target-lang">Target Language</label>
+                        <select id="target-lang" required>
+                            <option value="Auto">Auto-detect (Fix inside original language)</option>
+                            <option value="English">English</option>
+                            <option value="Russian">Russian</option>
+                            <option value="Spanish">Spanish</option>
+                            <option value="German">German</option>
+                            <option value="French">French</option>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h3><span class="section-num">03</span> System Preferences</h3>
+                    <div class="preferences-list">
+                        <label class="switch-wrapper">
+                            <div class="switch-text">
+                                <span class="switch-title">Launch at Windows Startup</span>
+                                <span class="switch-desc">Automatically run Nano Fixer when logging into Windows.</span>
+                            </div>
+                            <input type="checkbox" id="autostart">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </section>
+
+                <div class="actions">
+                    <button type="button" id="btn-logs" class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        View Logs
+                    </button>
+                    <button type="submit" id="btn-save" class="btn btn-primary">
+                        <span class="btn-text">Save Settings</span>
+                        <div class="spinner"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast">Settings saved successfully!</div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

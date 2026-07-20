@@ -1,0 +1,9 @@
+{
+  "APIKey": "your_openai_api_key_here",
+  "APIBaseURL": "https://api.openai.com/v1",
+  "ModelName": "gpt-4o-mini",
+  "HotkeyMod": "shift+alt",
+  "HotkeyKey": "C",
+  "TargetLanguage": "Auto",
+  "Autostart": false
+}

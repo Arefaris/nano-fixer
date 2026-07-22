@@ -9,6 +9,7 @@ import (
 	"github.com/gen2brain/beeep"
 	"nano-fixer/ai"
 	"nano-fixer/config"
+	"nano-fixer/gui"
 	"nano-fixer/keyboard"
 )
 
@@ -58,7 +59,9 @@ func RunCorrection(aiClient *ai.Client, getConfig func() *config.Config) {
 	}
 
 	log.Printf("Selected text length: %d characters\n", len(selectedText))
-	notify("Processing", "Correcting grammar...")
+	// notify("Processing", "Correcting grammar...")
+	gui.ShowHUD("✨ AI is fixing...")
+	defer gui.HideHUD()
 
 	// 6. Call AI API
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

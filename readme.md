@@ -54,7 +54,7 @@ Nano Fixer is a background Windows utility that uses the OpenAI API to automatic
 
 ## Security & Privacy
 
-- **Local Server Protection**: The settings interface is served locally, binding strictly to the loopback interface (`127.0.0.1`) on a randomized port. Access is guarded by a cryptographically secure 16-byte random token.
+- **Native Windows GUI**: The settings interface opens directly as a native Windows dialog without running an HTTP web server or opening external browser tabs.
 - **API Key Security**: The API key is stored encrypted in `config.json` via Windows DPAPI, protecting it from being read by unauthorized users or other machines.
 - **No Third-Party Routing**: Text is sent directly to the OpenAI API endpoint specified in your settings. No third-party servers are involved.
-- **Privacy-Safe Logs**: Application logs (`app.log`) do not store the text being corrected or your token details.
+- **Privacy-Safe Logs**: Application logs (`app.log`) do not store the text being corrected or your key details.

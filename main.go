@@ -2,26 +2,18 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"embed"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"io/fs"
 	"log"
-	"net"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
-
 
 	"github.com/getlantern/systray"
 
 	"nano-fixer/action"
 	"nano-fixer/ai"
 	"nano-fixer/config"
+	"nano-fixer/gui"
 	"nano-fixer/hotkey"
 )
 
@@ -39,9 +31,6 @@ var (
 	listenerCancel context.CancelFunc
 	listenerDone   chan struct{}
 	listenerMutex  sync.Mutex
-
-	serverPort  int
-	serverToken string
 )
 
 func main() {
@@ -74,9 +63,6 @@ func main() {
 	// Start Hotkey Listener
 	restartHotkeyListener()
 
-	// Start local settings web server
-	startSettingsServer()
-
 	// Start Systray
 	systray.Run(onReady, onExit)
 }
@@ -84,7 +70,6 @@ func main() {
 func getConfig() *config.Config {
 	configMutex.RLock()
 	defer configMutex.RUnlock()
-	// Return a copy to avoid data races
 	return &config.Config{
 		APIKey:         currentConfig.APIKey,
 		APIBaseURL:     currentConfig.APIBaseURL,
@@ -126,149 +111,36 @@ func restartHotkeyListener() {
 	}()
 }
 
-func generateToken() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "secret"
-	}
-	return hex.EncodeToString(bytes)
-}
-
-func startSettingsServer() {
-	serverToken = generateToken()
-
-	subFS, err := fs.Sub(settingsUI, "settings_ui")
-	if err != nil {
-		log.Fatalf("Failed to load embedded UI files: %v", err)
-	}
-
-	// Token validation middleware
-	validateToken := func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			token := r.URL.Query().Get("token")
-			if token != serverToken {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-			next(w, r)
-		}
-	}
-
-	// File Server with token validation (only on HTML page) and MIME type overrides for Windows Registry issues
-	fileServer := http.FileServer(http.FS(subFS))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Only validate token for the HTML page requests (root or index.html)
-		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-			token := r.URL.Query().Get("token")
-			if token != serverToken {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-		}
-
-		// Explicitly set Content-Type header on Windows to bypass potential registry corruption
-		ext := filepath.Ext(r.URL.Path)
-		switch ext {
-		case ".css":
-			w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		case ".js":
-			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		}
-
-		fileServer.ServeHTTP(w, r)
-	})
-
-	// API Handlers
-	http.HandleFunc("/api/config", validateToken(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			w.Header().Set("Content-Type", "application/json")
-			configMutex.RLock()
-			// Return a copy with masked API Key so it's not exposed
-			cfgCopy := *currentConfig
-			if cfgCopy.APIKey != "" {
-				cfgCopy.APIKey = "••••••••••••"
-			}
-			json.NewEncoder(w).Encode(cfgCopy)
-			configMutex.RUnlock()
-		} else if r.Method == http.MethodPost {
-			var newCfg config.Config
-			err := json.NewDecoder(r.Body).Decode(&newCfg)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			// Validate and Save
-			configMutex.Lock()
-			hotkeyChanged := currentConfig.HotkeyMod != newCfg.HotkeyMod || currentConfig.HotkeyKey != newCfg.HotkeyKey
-			
-			// If key is masked, keep the original key
-			if newCfg.APIKey == "••••••••••••" {
-				newCfg.APIKey = currentConfig.APIKey
-			}
-
-			currentConfig.APIKey = newCfg.APIKey
-			currentConfig.APIBaseURL = newCfg.APIBaseURL
-			currentConfig.ModelName = newCfg.ModelName
-			currentConfig.HotkeyMod = newCfg.HotkeyMod
-			currentConfig.HotkeyKey = newCfg.HotkeyKey
-			currentConfig.TargetLanguage = newCfg.TargetLanguage
-			currentConfig.Autostart = newCfg.Autostart
-
-			err = config.Save(currentConfig)
-			configMutex.Unlock()
-
-			if err != nil {
-				log.Printf("Failed to save config: %v", err)
-				http.Error(w, "Failed to save config", http.StatusInternalServerError)
-				return
-			}
-
-			// Update AI client configuration
-			aiClient.UpdateConfig(newCfg.APIKey, newCfg.APIBaseURL, newCfg.ModelName)
-
-			// Restart hotkey listener if hotkey changed
-			if hotkeyChanged {
-				log.Println("Hotkey settings changed. Restarting listener...")
-				restartHotkeyListener()
-			}
-
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
-		}
-	}))
-
-	http.HandleFunc("/api/logs", validateToken(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			exePath, err := os.Executable()
-			if err == nil {
-				logFilePath := filepath.Join(filepath.Dir(exePath), "app.log")
-				go exec.Command("notepad.exe", logFilePath).Start()
-			}
-			w.WriteHeader(http.StatusOK)
-		}
-	}))
-
-	// Bind to a random port on localhost only
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		log.Fatalf("Failed to start HTTP server: %v", err)
-	}
-
-	serverPort = listener.Addr().(*net.TCPAddr).Port
-	log.Printf("Settings server listening on http://127.0.0.1:%d\n", serverPort)
-
-	go func() {
-		if err := http.Serve(listener, nil); err != nil {
-			log.Printf("HTTP Server error: %v", err)
-		}
-	}()
-}
-
 func openSettings() {
-	url := fmt.Sprintf("http://127.0.0.1:%d/?token=%s", serverPort, serverToken)
-	log.Println("Opening settings page...")
-	go exec.Command("cmd", "/c", "start", url).Start()
+	gui.ShowWebViewSettings(settingsUI, getConfig, func(newCfg config.Config) {
+		configMutex.Lock()
+		hotkeyChanged := currentConfig.HotkeyMod != newCfg.HotkeyMod || currentConfig.HotkeyKey != newCfg.HotkeyKey
+
+		currentConfig.APIKey = newCfg.APIKey
+		currentConfig.APIBaseURL = newCfg.APIBaseURL
+		currentConfig.ModelName = newCfg.ModelName
+		currentConfig.HotkeyMod = newCfg.HotkeyMod
+		currentConfig.HotkeyKey = newCfg.HotkeyKey
+		currentConfig.TargetLanguage = newCfg.TargetLanguage
+		currentConfig.Autostart = newCfg.Autostart
+
+		err := config.Save(currentConfig)
+		configMutex.Unlock()
+
+		if err != nil {
+			log.Printf("Failed to save config: %v", err)
+			return
+		}
+
+		// Update AI client configuration
+		aiClient.UpdateConfig(newCfg.APIKey, newCfg.APIBaseURL, newCfg.ModelName)
+
+		// Restart hotkey listener if hotkey changed
+		if hotkeyChanged {
+			log.Println("Hotkey settings changed. Restarting listener...")
+			restartHotkeyListener()
+		}
+	})
 }
 
 func onReady() {

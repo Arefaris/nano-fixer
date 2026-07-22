@@ -16,10 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLogs = document.getElementById('btn-logs');
     const toast = document.getElementById('toast');
 
-    // Get token from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token') || '';
-
     // Show/hide API Key
     toggleKeyBtn.addEventListener('click', () => {
         const isPassword = apiKeyInput.type === 'password';
@@ -27,15 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const svg = toggleKeyBtn.querySelector('svg');
         if (isPassword) {
-            // eye-off icon
             svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
         } else {
-            // eye icon
             svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
         }
     });
 
-    // Show/hide eye button based on user typing a new key
     apiKeyInput.addEventListener('input', () => {
         if (apiKeyInput.value.length > 0) {
             toggleKeyBtn.style.display = 'block';
@@ -44,13 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Helper to fetch config
     async function loadConfig() {
         try {
-            const res = await fetch(`/api/config?token=${token}`);
-            if (!res.ok) throw new Error('Failed to load settings');
-            
-            const config = await res.json();
+            let configStr = '';
+            if (window.getConfig) {
+                configStr = await window.getConfig();
+            } else {
+                const res = await fetch('/api/config');
+                configStr = await res.text();
+            }
+            const config = JSON.parse(configStr);
             
             if (config.APIKey === '••••••••••••') {
                 apiKeyInput.value = '';
@@ -64,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
             apiBaseInput.value = config.APIBaseURL || '';
             modelNameInput.value = config.ModelName || 'gpt-4o-mini';
             
-            // Parse hotkey modifiers e.g. "shift+alt"
             const mods = (config.HotkeyMod || '').toLowerCase().split('+');
             modCtrl.checked = mods.includes('ctrl');
             modAlt.checked = mods.includes('alt');
@@ -80,14 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Save configuration
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         btnSave.classList.add('btn-loading');
         btnSave.disabled = true;
 
-        // Reconstruct modifiers string
         const mods = [];
         if (modCtrl.checked) mods.push('ctrl');
         if (modAlt.checked) mods.push('alt');
@@ -118,20 +111,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const res = await fetch(`/api/config?token=${token}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) throw new Error('Failed to save settings');
+            if (window.saveConfig) {
+                const ok = await window.saveConfig(JSON.stringify(payload));
+                if (!ok) throw new Error('Failed to save settings');
+            } else {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to save settings');
+            }
             
             showToast('Settings saved successfully!');
-            
-            // Optional: Close page after a small delay
             setTimeout(() => {
-                window.close();
-            }, 1000);
+                if (window.closeWindow) {
+                    window.closeWindow();
+                } else {
+                    window.close();
+                }
+            }, 800);
             
         } catch (err) {
             showToast('Error saving settings: ' + err.message, true);
@@ -141,11 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // View Logs button click
     btnLogs.addEventListener('click', async () => {
         try {
-            const res = await fetch(`/api/logs?token=${token}`, { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to open logs');
+            if (window.openLogs) {
+                window.openLogs();
+            } else {
+                await fetch('/api/logs', { method: 'POST' });
+            }
         } catch (err) {
             showToast('Error opening logs: ' + err.message, true);
         }
@@ -166,6 +167,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // Load initially
     loadConfig();
 });

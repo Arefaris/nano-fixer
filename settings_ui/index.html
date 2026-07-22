@@ -25,10 +25,34 @@
 
             <form id="settings-form">
                 <section class="form-section">
-                    <h3><span class="section-num">01</span> API Configuration</h3>
+                    <h3><span class="section-num">01</span> AI Engine</h3>
+                    <div class="preferences-list">
+                        <label class="switch-wrapper" style="margin-bottom: 12px;">
+                            <div class="switch-text">
+                                <span class="switch-title" style="color: #00ffaa;">Use Built-in Local AI</span>
+                                <span class="switch-desc">Downloads a 350MB local model (Free & Private)</span>
+                            </div>
+                            <input type="checkbox" id="use-local-ai">
+                            <span class="switch-slider"></span>
+                        </label>
+                        
+                        <div id="download-progress-container" style="display: none; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span id="download-status" style="font-size: 12px; color: var(--text-secondary);">Downloading Engine...</span>
+                                <span id="download-pct-text" style="font-size: 12px; font-weight: 600; color: var(--primary-color);">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                <div id="download-bar" style="width: 0%; height: 100%; background: var(--primary-gradient); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h3><span class="section-num">02</span> API Configuration</h3>
                     
                     <div class="input-group">
-                        <label for="api-key">API Key</label>
+                        <label for="api-key">API Key <span class="label-optional">(Optional for Local LLMs)</span></label>
                         <div class="password-wrapper">
                             <input type="password" id="api-key" placeholder="sk-proj-..." autocomplete="off">
                             <button type="button" id="toggle-key" class="icon-btn">
@@ -49,7 +73,7 @@
                 </section>
 
                 <section class="form-section">
-                    <h3><span class="section-num">02</span> Hotkeys & Language</h3>
+                    <h3><span class="section-num">03</span> Hotkeys & Language</h3>
                     
                     <div class="grid-2">
                         <div class="input-group">
@@ -125,8 +149,9 @@
                 </section>
 
                 <section class="form-section">
-                    <h3><span class="section-num">03</span> System Preferences</h3>
+                    <h3><span class="section-num">04</span> System Preferences</h3>
                     <div class="preferences-list">
+
                         <label class="switch-wrapper">
                             <div class="switch-text">
                                 <span class="switch-title">Launch at Windows Startup</span>

@@ -15,12 +15,6 @@ import (
 
 func RunCorrection(aiClient *ai.Client, getConfig func() *config.Config) {
 	cfg := getConfig()
-	if cfg.APIKey == "" {
-		log.Println("Correction triggered but API Key is empty. Aborting.")
-		notify("Nano Fixer", "Please configure your API Key in Settings.")
-		return
-	}
-
 	log.Println("Correction triggered. Language:", cfg.TargetLanguage)
 
 	// 1. Save current clipboard

@@ -15,6 +15,7 @@ import (
 	"nano-fixer/config"
 	"nano-fixer/gui"
 	"nano-fixer/hotkey"
+	"nano-fixer/localai"
 )
 
 //go:embed settings_ui/*
@@ -57,8 +58,22 @@ func main() {
 	}
 	currentConfig = cfg
 
+	// Start local AI if enabled
+	if cfg.UseLocalAI {
+		go func() {
+			err := localai.StartEngine()
+			if err != nil {
+				log.Println("Failed to start local AI:", err)
+			}
+		}()
+	}
+
 	// Initialize AI Client
-	aiClient = ai.NewClient(cfg.APIKey, cfg.APIBaseURL, cfg.ModelName)
+	if cfg.UseLocalAI {
+		aiClient = ai.NewClient("local", "http://127.0.0.1:8080/v1", localai.ModelFilename)
+	} else {
+		aiClient = ai.NewClient(cfg.APIKey, cfg.APIBaseURL, cfg.ModelName)
+	}
 
 	// Start Hotkey Listener
 	restartHotkeyListener()
@@ -78,6 +93,7 @@ func getConfig() *config.Config {
 		HotkeyKey:      currentConfig.HotkeyKey,
 		TargetLanguage: currentConfig.TargetLanguage,
 		Autostart:      currentConfig.Autostart,
+		UseLocalAI:     currentConfig.UseLocalAI,
 	}
 }
 
@@ -123,6 +139,7 @@ func openSettings() {
 		currentConfig.HotkeyKey = newCfg.HotkeyKey
 		currentConfig.TargetLanguage = newCfg.TargetLanguage
 		currentConfig.Autostart = newCfg.Autostart
+		currentConfig.UseLocalAI = newCfg.UseLocalAI
 
 		err := config.Save(currentConfig)
 		configMutex.Unlock()
@@ -132,8 +149,19 @@ func openSettings() {
 			return
 		}
 
-		// Update AI client configuration
-		aiClient.UpdateConfig(newCfg.APIKey, newCfg.APIBaseURL, newCfg.ModelName)
+		// Update AI client configuration and Engine state
+		if newCfg.UseLocalAI {
+			aiClient.UpdateConfig("local", "http://127.0.0.1:8080/v1", localai.ModelFilename)
+			go func() {
+				err := localai.StartEngine()
+				if err != nil {
+					log.Println("Failed to start local AI engine:", err)
+				}
+			}()
+		} else {
+			aiClient.UpdateConfig(newCfg.APIKey, newCfg.APIBaseURL, newCfg.ModelName)
+			localai.StopEngine()
+		}
 
 		// Restart hotkey listener if hotkey changed
 		if hotkeyChanged {
@@ -167,6 +195,9 @@ func onReady() {
 
 func onExit() {
 	log.Println("Exiting Nano Fixer...")
+	
+	localai.StopEngine()
+
 	listenerMutex.Lock()
 	if listenerCancel != nil {
 		listenerCancel()

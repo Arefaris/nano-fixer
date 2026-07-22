@@ -14,6 +14,7 @@ import (
 
 	webview2 "github.com/jchv/go-webview2"
 	"nano-fixer/config"
+	"nano-fixer/localai"
 )
 
 var (
@@ -83,6 +84,30 @@ func ShowWebViewSettings(uiFS embed.FS, cfgGetter func() *config.Config, onSave 
 				logFilePath := filepath.Join(filepath.Dir(exePath), "app.log")
 				go exec.Command("notepad.exe", logFilePath).Start()
 			}
+		})
+
+		w.Bind("checkLocalAIFiles", func() bool {
+			return localai.CheckFilesExist()
+		})
+
+		w.Bind("startLocalAIDownload", func() {
+			go func() {
+				err := localai.EnsureLocalAIFiles()
+				if err != nil {
+					log.Println("Local AI download failed:", err)
+				}
+			}()
+		})
+
+		w.Bind("getLocalAIDownloadProgress", func() string {
+			pct, status, downloading := localai.GetProgress()
+			res := map[string]interface{}{
+				"pct":         pct,
+				"status":      status,
+				"downloading": downloading,
+			}
+			data, _ := json.Marshal(res)
+			return string(data)
 		})
 
 		w.Bind("closeWindow", func() {

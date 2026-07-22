@@ -10,11 +10,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const hotkeyKey = document.getElementById('hotkey-key');
     const targetLang = document.getElementById('target-lang');
     const autostart = document.getElementById('autostart');
+    const useLocalAi = document.getElementById('use-local-ai');
+    const dlContainer = document.getElementById('download-progress-container');
+    const dlStatus = document.getElementById('download-status');
+    const dlPctText = document.getElementById('download-pct-text');
+    const dlBar = document.getElementById('download-bar');
     
     const toggleKeyBtn = document.getElementById('toggle-key');
     const btnSave = document.getElementById('btn-save');
     const btnLogs = document.getElementById('btn-logs');
     const toast = document.getElementById('toast');
+
+    let downloadInterval = null;
+
+    useLocalAi.addEventListener('change', async (e) => {
+        if (e.target.checked) {
+            let exists = false;
+            if (window.checkLocalAIFiles) {
+                exists = await window.checkLocalAIFiles();
+            }
+            if (!exists) {
+                dlContainer.style.display = 'block';
+                if (window.startLocalAIDownload) window.startLocalAIDownload();
+                
+                downloadInterval = setInterval(async () => {
+                    if (window.getLocalAIDownloadProgress) {
+                        const progressJson = await window.getLocalAIDownloadProgress();
+                        const p = JSON.parse(progressJson);
+                        dlStatus.textContent = p.status;
+                        dlPctText.textContent = p.pct + '%';
+                        dlBar.style.width = p.pct + '%';
+                        
+                        if (!p.downloading && p.pct === 100) {
+                            clearInterval(downloadInterval);
+                            setTimeout(() => { dlContainer.style.display = 'none'; }, 2000);
+                        } else if (!p.downloading && p.pct === 0 && p.status.includes('Error')) {
+                            clearInterval(downloadInterval);
+                            useLocalAi.checked = false;
+                            showToast(p.status, true);
+                        }
+                    }
+                }, 500);
+            }
+        } else {
+            dlContainer.style.display = 'none';
+            if (downloadInterval) clearInterval(downloadInterval);
+        }
+    });
 
     // Show/hide API Key
     toggleKeyBtn.addEventListener('click', () => {
@@ -69,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hotkeyKey.value = config.HotkeyKey || 'C';
             targetLang.value = config.TargetLanguage || 'Auto';
             autostart.checked = config.Autostart || false;
+            useLocalAi.checked = config.UseLocalAI || false;
             
         } catch (err) {
             showToast('Error loading settings: ' + err.message, true);
@@ -89,15 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const hotkeyModStr = mods.join('+');
 
         let sendKey = apiKeyInput.value;
-        if (sendKey === '') {
-            if (apiKeyInput.placeholder.includes('API Key is saved')) {
-                sendKey = '••••••••••••';
-            } else {
-                showToast('API Key is required!', true);
-                btnSave.classList.remove('btn-loading');
-                btnSave.disabled = false;
-                return;
-            }
+        if (sendKey === '' && apiKeyInput.placeholder.includes('API Key is saved')) {
+            sendKey = '••••••••••••';
         }
 
         const payload = {
@@ -107,7 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
             HotkeyMod: hotkeyModStr,
             HotkeyKey: hotkeyKey.value,
             TargetLanguage: targetLang.value,
-            Autostart: autostart.checked
+            Autostart: autostart.checked,
+            UseLocalAI: useLocalAi.checked
         };
 
         try {

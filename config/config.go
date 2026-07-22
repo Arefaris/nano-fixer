@@ -21,6 +21,7 @@ type Config struct {
 	HotkeyKey      string `json:"HotkeyKey"`
 	TargetLanguage string `json:"TargetLanguage"`
 	Autostart      bool   `json:"Autostart"`
+	UseLocalAI     bool   `json:"UseLocalAI"`
 }
 
 // GetConfigPath returns the path to the config file in the executable's directory

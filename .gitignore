@@ -6,3 +6,4 @@ rsrc.syso
 app.manifest
 .env
 .env.example
+/local_ai

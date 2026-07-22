@@ -5,6 +5,7 @@ Nano Fixer is a background Windows utility that uses the OpenAI API to automatic
 ## Features
 
 - **Global Hotkey Integration**: Highlight text in any application (browser, text editor, word processor, etc.) and press your configured hotkey combination. The application automatically replaces the selected text with the corrected version.
+- **Embedded Local AI (Free & Private)**: Optionally download and run a local AI model (Qwen 2.5 0.5B) entirely within the application. No external tools like Ollama required. Your text never leaves your PC.
 - **Language Selection & Auto-Detection**: Can be configured to translate/correct to a specific language, or automatically detect and correct the text in its original language.
 - **Background Execution**: Runs silently in the Windows system tray with a menu to access settings, view logs, or exit.
 - **Windows Autostart**: Option to launch automatically when logging into Windows.

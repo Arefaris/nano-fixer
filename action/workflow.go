@@ -11,6 +11,7 @@ import (
 	"nano-fixer/config"
 	"nano-fixer/gui"
 	"nano-fixer/keyboard"
+	"nano-fixer/localai"
 )
 
 func RunCorrection(aiClient *ai.Client, getConfig func() *config.Config) {
@@ -57,7 +58,21 @@ func RunCorrection(aiClient *ai.Client, getConfig func() *config.Config) {
 	gui.ShowHUD("✨ AI is fixing...")
 	defer gui.HideHUD()
 
-	// 6. Call AI API
+	// 6. Ensure Local AI is running if enabled
+	if cfg.UseLocalAI && !localai.IsRunning() {
+		log.Println("Local AI engine is not running (crashed or sleeping). Restarting it...")
+		gui.ShowHUD("⚙️ Restarting AI Engine...")
+		err := localai.StartEngine()
+		if err != nil {
+			log.Println("Failed to restart engine:", err)
+			notify("Error", "Could not restart local AI engine.")
+			restoreClipboard(originalClipboard)
+			return
+		}
+		gui.ShowHUD("✨ AI is fixing...")
+	}
+
+	// 7. Call AI API
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

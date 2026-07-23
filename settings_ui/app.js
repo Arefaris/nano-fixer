@@ -136,10 +136,26 @@ document.addEventListener('DOMContentLoaded', () => {
             sendKey = '••••••••••••';
         }
 
+        let apiBase = apiBaseInput.value.trim();
+        if (apiBase !== "" && !/^https?:\/\//i.test(apiBase)) {
+            showToast('Error: API Base URL must start with http:// or https://', true);
+            btnSave.classList.remove('btn-loading');
+            btnSave.disabled = false;
+            return;
+        }
+
+        let modelName = modelNameInput.value.trim();
+        if (!/^[a-zA-Z0-9\-\._:]+$/.test(modelName)) {
+            showToast('Error: Invalid model name characters', true);
+            btnSave.classList.remove('btn-loading');
+            btnSave.disabled = false;
+            return;
+        }
+
         const payload = {
             APIKey: sendKey,
-            APIBaseURL: apiBaseInput.value,
-            ModelName: modelNameInput.value,
+            APIBaseURL: apiBase,
+            ModelName: modelName,
             HotkeyMod: hotkeyModStr,
             HotkeyKey: hotkeyKey.value,
             TargetLanguage: targetLang.value,

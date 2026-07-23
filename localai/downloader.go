@@ -52,9 +52,13 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 // CheckFilesExist checks if the engine and model already exist.
 func CheckFilesExist() bool {
 	exeDir, _ := os.Executable()
-	localAIDir := filepath.Join(filepath.Dir(exeDir), "local_ai")
-	serverPath := filepath.Join(localAIDir, "llama-server.exe")
-	modelPath := filepath.Join(localAIDir, ModelFilename)
+	localAIDir := filepath.Clean(filepath.Join(filepath.Dir(exeDir), "local_ai"))
+	serverPath := filepath.Clean(filepath.Join(localAIDir, "llama-server.exe"))
+	modelPath := filepath.Clean(filepath.Join(localAIDir, ModelFilename))
+
+	if !strings.HasPrefix(serverPath, localAIDir) || !strings.HasPrefix(modelPath, localAIDir) {
+		return false
+	}
 
 	_, err1 := os.Stat(serverPath)
 	_, err2 := os.Stat(modelPath)
@@ -77,11 +81,15 @@ func EnsureLocalAIFiles() error {
 	}()
 
 	exeDir, _ := os.Executable()
-	localAIDir := filepath.Join(filepath.Dir(exeDir), "local_ai")
-	os.MkdirAll(localAIDir, 0755)
+	localAIDir := filepath.Clean(filepath.Join(filepath.Dir(exeDir), "local_ai"))
+	os.MkdirAll(localAIDir, 0750) // More restrictive permissions
 
-	serverPath := filepath.Join(localAIDir, "llama-server.exe")
-	modelPath := filepath.Join(localAIDir, ModelFilename)
+	serverPath := filepath.Clean(filepath.Join(localAIDir, "llama-server.exe"))
+	modelPath := filepath.Clean(filepath.Join(localAIDir, ModelFilename))
+
+	if !strings.HasPrefix(serverPath, localAIDir) || !strings.HasPrefix(modelPath, localAIDir) {
+		return fmt.Errorf("invalid path traversal attempt")
+	}
 
 	if _, err := os.Stat(serverPath); os.IsNotExist(err) {
 		err := downloadAndExtractZip(LlamaServerURL, localAIDir, "llama-server.exe")
@@ -114,13 +122,17 @@ func downloadFile(url, dest, statusMsg string) error {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
+	total := resp.ContentLength
+	if total > 5*1024*1024*1024 { // 5 GB limit for model
+		return fmt.Errorf("file too large")
+	}
+
 	tmpDest := dest + ".tmp"
-	out, err := os.Create(tmpDest)
+	out, err := os.OpenFile(tmpDest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		return err
 	}
 
-	total := resp.ContentLength
 	pw := &progressWriter{
 		total: total,
 		onProgress: func(downloaded, total int64) {
@@ -133,7 +145,8 @@ func downloadFile(url, dest, statusMsg string) error {
 		},
 	}
 
-	_, err = io.Copy(out, io.TeeReader(resp.Body, pw))
+	// Limit reader to prevent disk exhaustion
+	_, err = io.Copy(out, io.TeeReader(io.LimitReader(resp.Body, 5*1024*1024*1024), pw))
 	out.Close()
 	if err != nil {
 		os.Remove(tmpDest)
@@ -155,6 +168,10 @@ func downloadAndExtractZip(url, destDir, targetFile string) error {
 	}
 
 	total := resp.ContentLength
+	if total > 500*1024*1024 { // 500 MB limit
+		return fmt.Errorf("file too large")
+	}
+
 	var buf bytes.Buffer
 	pw := &progressWriter{
 		total: total,
@@ -166,7 +183,9 @@ func downloadAndExtractZip(url, destDir, targetFile string) error {
 		},
 	}
 
-	_, err = io.Copy(&buf, io.TeeReader(resp.Body, pw))
+	// Read with a hard limit to prevent memory exhaustion
+	limitReader := io.LimitReader(resp.Body, 500*1024*1024)
+	_, err = io.Copy(&buf, io.TeeReader(limitReader, pw))
 	if err != nil {
 		return err
 	}
@@ -179,17 +198,30 @@ func downloadAndExtractZip(url, destDir, targetFile string) error {
 	}
 
 	for _, file := range reader.File {
-		if strings.HasSuffix(file.Name, targetFile) {
+		// Clean the file name to prevent directory traversal in archive (Zip Slip)
+		cleanName := filepath.Clean(file.Name)
+		if strings.Contains(cleanName, "..") {
+			continue // Skip malicious files
+		}
+
+		if strings.HasSuffix(cleanName, targetFile) {
 			f, err := file.Open()
 			if err != nil {
 				return err
 			}
-			out, err := os.Create(filepath.Join(destDir, targetFile))
+			destPath := filepath.Join(destDir, targetFile)
+			// Final check
+			if !strings.HasPrefix(destPath, filepath.Clean(destDir)) {
+				f.Close()
+				continue
+			}
+			out, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0750)
 			if err != nil {
 				f.Close()
 				return err
 			}
-			_, err = io.Copy(out, f)
+			// Limit extraction size to prevent zip bombs
+			_, err = io.Copy(out, io.LimitReader(f, 100*1024*1024))
 			f.Close()
 			out.Close()
 			if err != nil {
@@ -199,15 +231,23 @@ func downloadAndExtractZip(url, destDir, targetFile string) error {
 		}
 	}
 
-	// Extract .dll files as well
+	// Extract .dll files as well safely
 	for _, file := range reader.File {
-		if strings.HasSuffix(file.Name, ".dll") {
+		cleanName := filepath.Clean(file.Name)
+		if strings.Contains(cleanName, "..") {
+			continue
+		}
+
+		if strings.HasSuffix(cleanName, ".dll") {
 			f, err := file.Open()
 			if err == nil {
-				out, err := os.Create(filepath.Join(destDir, filepath.Base(file.Name)))
-				if err == nil {
-					io.Copy(out, f)
-					out.Close()
+				destPath := filepath.Join(destDir, filepath.Base(cleanName))
+				if strings.HasPrefix(destPath, filepath.Clean(destDir)) {
+					out, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0750)
+					if err == nil {
+						io.Copy(out, io.LimitReader(f, 50*1024*1024))
+						out.Close()
+					}
 				}
 				f.Close()
 			}

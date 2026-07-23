@@ -82,7 +82,16 @@ func ShowWebViewSettings(uiFS embed.FS, cfgGetter func() *config.Config, onSave 
 			exePath, err := os.Executable()
 			if err == nil {
 				logFilePath := filepath.Join(filepath.Dir(exePath), "app.log")
-				go exec.Command("notepad.exe", logFilePath).Start()
+				sysDir, err := os.UserConfigDir() // Using an alternative safe path, but for notepad it's usually System32
+				if err != nil {
+					sysDir = "C:\\Windows\\System32"
+				} else {
+					sysDir = filepath.Join(os.Getenv("SystemRoot"), "System32")
+				}
+				notepadPath := filepath.Join(sysDir, "notepad.exe")
+				if _, err := os.Stat(notepadPath); err == nil {
+					go exec.Command(notepadPath, logFilePath).Start()
+				}
 			}
 		})
 

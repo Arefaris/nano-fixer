@@ -49,7 +49,8 @@ CRITICAL RULES:
 1. Detect the language of the input text automatically. Correct it in that SAME language. Do NOT translate it.
 2. Do NOT change the meaning of the text.
 3. Do NOT change the style, tone, or register. If the text is casual (e.g. Discord slang, gaming terms, shorthand, fast typing), keep it casual and natural.
-4. Return ONLY the corrected text. Do not add explanations, quotes, or markdown formatting.`
+4. If there are NO errors in the text, you MUST return the exact original text.
+5. NEVER engage in conversation. NEVER explain your changes. Return ONLY the final text.`
 	} else {
 		systemPrompt = fmt.Sprintf(`You are a background grammar and style correction assistant.
 Your task is to correct the text and ensure it is in the target language: %s.
@@ -58,7 +59,8 @@ CRITICAL RULES:
 2. Fix all grammar, spelling, typos, and style errors.
 3. Do NOT change the core meaning of the text.
 4. Try to preserve the original style, tone, and register (e.g. if the input is casual slang, translate it to equivalent casual slang in %s).
-5. Return ONLY the corrected text. Do not add explanations, quotes, or markdown formatting.`, targetLanguage, targetLanguage, targetLanguage)
+5. If the original text is already correct and in the target language, return it exactly as is.
+6. NEVER engage in conversation. NEVER explain your changes. Return ONLY the final text.`, targetLanguage, targetLanguage, targetLanguage)
 	}
 
 	resp, err := c.client.CreateChatCompletion(

@@ -27,22 +27,22 @@
                 <section class="form-section">
                     <h3><span class="section-num">01</span> AI Engine</h3>
                     <div class="preferences-list">
-                        <label class="switch-wrapper" style="margin-bottom: 12px;">
+                        <label class="switch-wrapper">
                             <div class="switch-text">
-                                <span class="switch-title" style="color: #00ffaa;">Use Built-in Local AI</span>
+                                <span class="switch-title">Use Built-in Local AI</span>
                                 <span class="switch-desc">Downloads a 350MB local model (Free & Private)</span>
                             </div>
                             <input type="checkbox" id="use-local-ai">
                             <span class="switch-slider"></span>
                         </label>
                         
-                        <div id="download-progress-container" style="display: none; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                        <div id="download-progress-container" style="display: none; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; margin-bottom: 10px;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                                 <span id="download-status" style="font-size: 12px; color: var(--text-secondary);">Downloading Engine...</span>
                                 <span id="download-pct-text" style="font-size: 12px; font-weight: 600; color: var(--primary-color);">0%</span>
                             </div>
-                            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-                                <div id="download-bar" style="width: 0%; height: 100%; background: var(--primary-gradient); transition: width 0.3s ease;"></div>
+                            <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                <div id="download-bar" style="width: 0%; height: 100%; background: var(--primary-color); transition: width 0.3s ease;"></div>
                             </div>
                         </div>
                     </div>
@@ -63,12 +63,12 @@
 
                     <div class="input-group">
                         <label for="api-base">API Base URL <span class="label-optional">(Optional)</span></label>
-                        <input type="url" id="api-base" placeholder="https://api.openai.com/v1">
+                        <input type="url" id="api-base" placeholder="https://api.openai.com/v1" pattern="https?://.*" title="Must start with http:// or https://">
                     </div>
 
                     <div class="input-group">
                         <label for="model-name">Model Name</label>
-                        <input type="text" id="model-name" placeholder="gpt-4o-mini" required>
+                        <input type="text" id="model-name" placeholder="gpt-4o-mini" required pattern="[a-zA-Z0-9\-\._:]+" title="Only letters, numbers, dashes, dots, and colons allowed">
                     </div>
                 </section>
 
